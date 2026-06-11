@@ -1,16 +1,59 @@
-# 🏛️ Modern SQL Data Warehouse: Medallion Architecture
+# Modern SQL Data Warehouse — Portfolio Case Study
 
-[![SQL Mastery](https://img.shields.io/badge/SQL-PostgreSQL-blue.svg)](https://www.postgresql.org/)
-[![Architecture](https://img.shields.io/badge/Architecture-Medallion-orange.svg)](#architecture)
-[![Data Modeling](https://img.shields.io/badge/Modeling-Star%20Schema-green.svg)](#data-modeling)
+[![SQL](https://img.shields.io/badge/SQL-PostgreSQL-blue.svg)](https://www.postgresql.org/)
+[![Architecture](https://img.shields.io/badge/Architecture-Medallion-orange.svg)](#technical-reference)
+[![Modeling](https://img.shields.io/badge/Modeling-Star%20Schema-green.svg)](#technical-reference)
 
-## 🚀 The Business Problem
-Managing disparate data from multiple sources (CRM and ERP) often leads to "data silos" where executive decision-making is slowed by inconsistent metrics. This project solves that by consolidating raw SaaS sales and financial data into a single, high-performance **Analytical Data Warehouse**.
+> Consolidating CRM and ERP data into a PostgreSQL analytical warehouse using Bronze → Silver → Gold medallion layers and a star schema.
 
 ---
 
-## 🏗️ Architecture: The Medallion Flow
-We use the **Medallion Architecture** to ensure data quality and reliability throughout the pipeline.
+## Why I built this
+
+Executive teams cannot make consistent decisions when CRM sales data and ERP financial data live in separate silos with different grains. I built this warehouse to practice **trustworthy analytics engineering** — not just writing SQL, but designing layers that survive messy real-world CSVs.
+
+## The challenge
+
+- **Data quality:** Raw exports had inconsistent types, human-readable currency strings, and duplicate grains between CRM opportunities and ERP accounts.
+- **Architecture:** Learning medallion layers in theory is easy; enforcing Bronze → Silver → Gold discipline in practice was harder than expected.
+- **Modeling:** I had to decide what belonged in dimensions vs facts before writing analytical queries.
+
+## What I did
+
+1. Designed **Bronze, Silver, and Gold** schemas in PostgreSQL with explicit DDL and load procedures.
+2. Built cleansing and casting logic in the Silver layer (including human-readable parsing functions).
+3. Modeled a **star schema** in Gold: `fact_sales_pipeline` + `dim_accounts`, `dim_products`, `dim_sales_team`.
+4. Wrote executive SQL — regional revenue, SaaS ARR leaderboard — against the gold layer only.
+
+## What I learned
+
+- Medallion architecture is about **trust at each hop**, not buzzwords on a diagram.
+- Star schema design forces you to ask the business question *before* aggregating.
+- Stored procedures for `load_bronze` → `load_silver` → `load_gold` make the pipeline repeatable for reviewers.
+
+## How this leveled me up
+
+| | |
+|---|---|
+| **Before** | I wrote one-off SQL against raw CSVs in notebooks |
+| **After** | I can design layered warehouses, dimensional models, and repeatable load pipelines |
+| **Unlocked next** | Analytics engineering vocabulary → Dynamic Pricing data thinking and BI deliverables |
+
+## Demo / proof
+
+- Datasets included in `/datasets`
+- Sample analytical queries below in [SQL Showcase](#sql-showcase-business-insights)
+- Setup: PostgreSQL + scripts in `/scripts` (see [Getting Started](#getting-started))
+
+---
+
+## Technical reference
+
+### The business problem
+
+Managing disparate data from multiple sources (CRM and ERP) often leads to data silos where executive decision-making is slowed by inconsistent metrics. This project consolidates raw SaaS sales and financial data into a single analytical data warehouse.
+
+### Architecture: The Medallion Flow
 
 ```mermaid
 graph LR
@@ -21,7 +64,7 @@ graph LR
 
     subgraph "Data Warehouse (PostgreSQL)"
         direction TB
-        C[(Bronze Layer)] -->|Cleansing & Casting| D[(Silver Layer)]
+        C[(Bronze Layer)] -->|Cleansing and Casting| D[(Silver Layer)]
         D -->|Star Schema Modeling| E[(Gold Layer)]
     end
 
@@ -36,10 +79,7 @@ graph LR
     E --> G
 ```
 
----
-
-## 💎 Data Modeling: Gold Layer (Star Schema)
-The final stage of the pipeline transforms cleaned data into a high-performance **Star Schema** optimized for analytical queries.
+### Data modeling: Gold layer (star schema)
 
 ```mermaid
 erDiagram
@@ -82,12 +122,10 @@ erDiagram
     FACT_SALES_PIPELINE }o--|| DIM_SALES_TEAM : "managed by"
 ```
 
----
+### SQL showcase: Business insights
 
-## 📈 SQL Showcase: Business Insights
+#### 1. Sales performance by region
 
-### 1. Sales Performance by Region
-*Identifies which regions are driving the highest revenue to optimize sales team allocation.*
 ```sql
 SELECT 
     t.region,
@@ -100,8 +138,8 @@ GROUP BY t.region
 ORDER BY total_revenue DESC;
 ```
 
-### 2. SaaS Leaderboard (ARR vs. Valuation)
-*Enriches CRM account data with ERP financial metrics to identify high-value enterprise clients.*
+#### 2. SaaS leaderboard (ARR vs valuation)
+
 ```sql
 SELECT 
     account_name,
@@ -114,21 +152,16 @@ ORDER BY arr_usd DESC
 LIMIT 5;
 ```
 
----
+### Getting started
 
-## 🛠️ Getting Started
+**Prerequisites:** PostgreSQL (or pgAdmin 4); datasets in `/datasets`.
 
-### Prerequisites
-- PostgreSQL (or PGAdmin 4)
-- Original Datasets (included in `/datasets`)
-
-### Setup Instructions
-1. **Initialize Database**: Execute `scripts/Init_database.sql` to create the schemas.
-2. **Define Tables**: Run the DDL scripts in order:
+1. Execute `scripts/Init_database.sql` to create schemas.
+2. Run DDL scripts in order:
    - `scripts/bronze_layer/ddl_bronze_layer.sql`
    - `scripts/silver_layer/ddl_silver_layer.sql`
    - `scripts/gold_layer/ddl_gold_layer.sql`
-3. **Execute Load**: Run the stored procedures to ingest and transform data:
+3. Load data:
    ```sql
    CALL bronze.load_bronze();
    CALL silver.load_silver();
